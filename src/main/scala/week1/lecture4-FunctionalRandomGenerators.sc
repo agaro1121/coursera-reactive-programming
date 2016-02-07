@@ -1,5 +1,5 @@
 trait Generator[+T] {
-  self =>
+  self => //an alias for "this"
 
   def generate: T
 

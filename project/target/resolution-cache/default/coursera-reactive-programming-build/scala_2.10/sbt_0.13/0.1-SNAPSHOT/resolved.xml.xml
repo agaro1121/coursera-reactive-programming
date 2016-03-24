@@ -4,7 +4,7 @@
 		module="coursera-reactive-programming-build"
 		revision="0.1-SNAPSHOT"
 		status="integration"
-		publication="20160202222007"
+		publication="20160323225404"
 		e:sbtVersion="0.13" e:scalaVersion="2.10"
 	>
 		<description>

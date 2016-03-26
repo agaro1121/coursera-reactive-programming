@@ -8,3 +8,7 @@ exit
 ~compile
 compile
 exit
+;clean;compile
+update
+compile
+exit

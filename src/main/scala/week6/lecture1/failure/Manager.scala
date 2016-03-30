@@ -1,13 +1,14 @@
-package week6.lecture1_failure
+package week6.lecture1.failure
 
 import akka.actor.SupervisorStrategy.Restart
-import akka.actor.{Props, OneForOneStrategy, SupervisorStrategy, Actor}
+import akka.actor.{Actor, OneForOneStrategy, Props, SupervisorStrategy}
 import akka.actor.Actor.Receive
-import week6.lecture1_failure.DBActor.DBException
+
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import akka.pattern.ask
 import akka.util.Timeout
+import week6.lecture1.failure.DBActor.DBException
 
 /**
   * Created by hierro on 3/29/16.

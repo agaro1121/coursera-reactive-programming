@@ -1,7 +1,6 @@
-package week6.lecture1_failure
+package week6.lecture2.deathwatch
 
-import akka.actor.{ActorLogging, Actor}
-import akka.actor.Actor.Receive
+import akka.actor.{Actor, ActorLogging}
 
 /**
   * Created by hierro on 3/29/16.
@@ -14,6 +13,12 @@ class DBActor extends Actor with ActorLogging {
     case "get"  => if(count < 3) {count += 1; sender ! count} else throw new DBException("DB Exception")
 
   }
+
+  @scala.throws[Exception](classOf[Exception])
+  override def preRestart(reason: Throwable, message: Option[Any]): Unit = {
+    println(s"Restarting due to throwable = ${reason.toString} with message = ${message foreach(x => println("\""+x+"\""))} and count = $count")
+  }
+
 }
 
 object DBActor {

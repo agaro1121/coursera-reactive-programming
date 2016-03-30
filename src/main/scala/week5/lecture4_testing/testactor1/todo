@@ -1,0 +1,4 @@
+1) Create web client to call url and parse body
+2) Create Getter Actor that uses client
+3) Create controller that creates Getter
+4) Mock both and test using word spec

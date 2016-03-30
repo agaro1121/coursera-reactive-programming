@@ -1,2 +1,14 @@
-clean
+exit
+;clean;update;compile
+exit
+;clean;update
+compile
+exit
+;clean;update;compile
+~compile
+compile
+exit
+;clean;compile
+update
+compile
 exit

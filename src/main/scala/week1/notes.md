@@ -76,3 +76,48 @@ println(show(jobj))
 ```
 
 - Arrays in scala are treated as Sequences by means of implicit wrapper
+
+
+
+
+#Monads
+Contains:
+- flatMap(bind)
+- unit
+map can be defined with flatMap and f:
+m map f == m flatMap (x => unit(f(x)))
+        == m flatMap (f andThen unit)
+- in scala, map is a primitive function defined on every monad because every monad has a different unit type
+so it does not fit the above equation
+
+Examples
+- List -> unit(x) -> List(x)
+- Set -> unit(x) -> Set(x)
+- Option -> unit(x) -> Some(x)
+- Generator -> unit(x) -> single(x)
+
+
+
+Monad Laws
+- Associativity - When held, allows for For Expressions
+m flatMap f flatMap g = m flatMap ( x => f(x) flatMap g ) //Put parenthesis wherever and it still works
+
+- Left Unit
+unit(x) flatMap f == f(x)
+Example: Option
+```
+Some(x) flatMap f
+Some(x) match {
+    Some(x) => f(x)
+    None => None
+    }
+```
+- Right Unit
+m flatMap unit == m
+```
+opt flatMap Some
+opt match{
+    Some(x) => Some(x) //Returns exactly what you started with
+    None => None //Returns exactly what you started with
+    }
+```

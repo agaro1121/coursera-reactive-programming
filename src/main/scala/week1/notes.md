@@ -77,9 +77,6 @@ println(show(jobj))
 
 - Arrays in scala are treated as Sequences by means of implicit wrapper
 
-
-
-
 #Monads
 Contains:
 - flatMap(bind)
@@ -120,4 +117,40 @@ opt match{
     Some(x) => Some(x) //Returns exactly what you started with
     None => None //Returns exactly what you started with
     }
+
+###Translation of For Expression
+1. A simple for-expression -  eliminates a single generator
+`for (x <- e1) yield e2` == `e1.map(x => e2)`
+
+2. A for-expression, where f is a filter and is a (potentially empty) sequence of generators and filters - eliminates a filter element
+`for (x <- e1 if f; s) yield e2` = `for(x <- e1.withFilter(x => f); s) yield e2`
+
+3. A for-expression where s is a sequence of generators and filters - eliminates leading generator 
+`for (x <- e1; y <- e2; s) yield e3` = `e1.flatMap(x => for (y <- e2; s) yield e3)`
+
+- left-hand side of generator can also be patter
+```scala
+val data: List[JSON]
+for {
+JObj(bindings) <- data
+JSeq(phones) = bindings("phoneNumbers")
+JObj(phone) <- phones
+JStr(digits) = phone("number")
+if digits startsWith "212"
+} yield (bindings("firstName"), bindings("lastName"))
+```
+
+```scala
+trait Generator[+T] {
+    self => //an alias for this
+    
+    def generate: T
+    
+    def map[S](f: T => S): Generate[S] = new Generator[S] {
+        def generate = f(self.generate)
+        //if the above `self.generate` were simply `generate`, then Scala would 
+        //expand it to `this.generate` which would refer to the new internal generate function
+        //an alternative would to the `self` declaration would be to call `Generator.this.generate` to clarify
+    }
+}
 ```

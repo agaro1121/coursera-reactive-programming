@@ -9,7 +9,7 @@ class Signal[T](expr: => T){
   private var myExpr: () => T = _
   private var myValue: T = _
   private var observers: Set[Signal[_]] = Set()
-  private var caller = new StackableVariable(this)
+  private val caller = new StackableVariable(this)
   update(expr)
 
   protected def update(expr: => T): Unit = {
@@ -29,16 +29,20 @@ class Signal[T](expr: => T){
   }
 
   def apply() = {
-    observers += caller.value
     assert(!caller.value.observers.contains(this), "cyclic signal definition") //deals with s() = s() + 1...error would still get caught but it would be stack over flow error instead
+    observers += caller.value
     myValue
   }
 }
+
 object Signal {
 //  private val caller = new StackableVariable[Signal[_]](NoSignal) //global state
   private val caller = new DynamicVariable[Signal[_]](NoSignal) //thread-local state
   def apply[T](expr: => T) = new Signal(expr)
 }
+
+
+
 object NoSignal extends Signal[Nothing](???) {
   override def computeValue() = ()
 }
@@ -71,13 +75,10 @@ class StackableVariable[T](init: T) {
 class BankAccountWithSignal extends Publisher {
   val balance = Var(0)
 
-
-
   def deposit(amount: Int): Unit = {
     if (amount > 0) {
       val b = balance()
       balance() = b + amount
-      publish
     }
   }
 
@@ -85,13 +86,32 @@ class BankAccountWithSignal extends Publisher {
     if (0 < amount && amount <= balance()) {
       val b = balance()
       balance() = b - amount
-      publish()
     } else throw new Error("insufficient funds")
   }
-
-  def getBalance = balance
 }
 
-object Main extends App{
+object SignalsTest extends App{
 
+  val d = Var(0)
+  val e = Var(1)
+  val f = d() + e()
+  println(f)
+
+  val a = new BankAccountWithSignal
+  val b = new BankAccountWithSignal
+  val c = consolidated(List(a,b))
+
+  println(c())
+
+  a deposit 20
+
+  println(c())
+
+  b deposit 30
+
+  println(c())
+
+  def consolidated(list: List[BankAccountWithSignal]): Signal[Int] = {
+    Signal(list.map(_.balance()).sum)
+  }
 }

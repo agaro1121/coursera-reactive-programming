@@ -6,10 +6,10 @@ import scala.util.DynamicVariable
   * Created by anthonygaro on 4/21/16.
   */
 class Signal[T](expr: => T){
+  import Signal._
   private var myExpr: () => T = _
   private var myValue: T = _
   private var observers: Set[Signal[_]] = Set()
-  private val caller = new StackableVariable(this)
   update(expr)
 
   protected def update(expr: => T): Unit = {
@@ -17,7 +17,7 @@ class Signal[T](expr: => T){
     computeValue()
   }
 
-  def computeValue(): Unit = {
+  protected def computeValue(): Unit = {
     val newValue = caller.withValue(this)(myExpr())
     if(myValue != newValue){
       myValue = newValue
@@ -36,8 +36,7 @@ class Signal[T](expr: => T){
 }
 
 object Signal {
-//  private val caller = new StackableVariable[Signal[_]](NoSignal) //global state
-  private val caller = new DynamicVariable[Signal[_]](NoSignal) //thread-local state
+  val caller = new DynamicVariable[Signal[_]](NoSignal) //thread-local state
   def apply[T](expr: => T) = new Signal(expr)
 }
 
@@ -54,21 +53,6 @@ class Var[T](expr: => T) extends Signal[T](expr) {
 }
 object Var {
   def apply[T](expr: => T) = new Var(expr)
-}
-
-/**
-  * Sample
-  * val caller = new StackableVariable(initialSig)
-  * caller.withValue(otherSig){...}
-  *
-  * */
-class StackableVariable[T](init: T) {
-  private var values: List[T] = List(init)
-  def value: T = values.head
-  def withValue[R](newValue: T)(op: => R): R = {
-    values = newValue :: values
-    try op finally values = values.tail
-  }
 }
 
 

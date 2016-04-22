@@ -12,3 +12,5 @@ libraryDependencies += "org.jsoup" % "jsoup" % "1.8.1"
 
 libraryDependencies += "org.scalatest" %% "scalatest" % "2.2.6"
 libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.13.0"
+
+libraryDependencies += "io.reactivex" %% "rxscala" % "0.24.0"

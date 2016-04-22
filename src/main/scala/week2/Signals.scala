@@ -29,8 +29,8 @@ class Signal[T](expr: => T){
   }
 
   def apply() = {
-    assert(!caller.value.observers.contains(this), "cyclic signal definition") //deals with s() = s() + 1...error would still get caught but it would be stack over flow error instead
     observers += caller.value
+    assert(!caller.value.observers.contains(this), "cyclic signal definition") //deals with s() = s() + 1...error would still get caught but it would be stack over flow error instead
     myValue
   }
 }

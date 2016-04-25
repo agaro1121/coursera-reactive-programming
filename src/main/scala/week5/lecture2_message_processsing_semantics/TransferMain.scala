@@ -13,7 +13,8 @@ class TransferMain extends Actor {
   accountA ! BankAccount.Deposit(100)
 
   override def receive: Receive = LoggingReceive {
-    case BankAccount.Done => transfer(150)
+    case BankAccount.Done => transfer(50)
+//    case BankAccount.Done => transfer(150) //fail case
   }
 
   def transfer(amount: BigInt) = {

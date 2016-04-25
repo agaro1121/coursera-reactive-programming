@@ -6,15 +6,17 @@ import week5.lecture3_designing.Controller
 
 class Receptionist extends Actor {
   import Receptionist._
+
   def receive = waiting
 
   var reqNo = 0
-  def runNext(queue: Vector[Job]): Receive = {
+
+  def runNext(queue: Vector[Job]): Receive = { //pick the next job and run it!
     reqNo += 1
     if (queue.isEmpty) waiting
     else {
       val controller = context.actorOf(Props[Controller], s"c$reqNo" )
-      controller ! Controller.Check(queue.head.url, 2)
+      controller ! Controller.Check(queue.head.url, 2) //depth
       running(queue)
     }
   }
@@ -29,8 +31,9 @@ class Receptionist extends Actor {
       job.client ! Result(job.url, links)
       context.stop(sender)
       context.become(runNext(queue.tail))
+
     case Get(url) =>
-    context.become(enqueueJob(queue, Job(sender, url)))
+      context.become(enqueueJob(queue, Job(sender, url)))
   }
 
   def enqueueJob(queue: Vector[Job], job: Job): Receive = {

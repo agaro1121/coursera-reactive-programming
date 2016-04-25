@@ -1,10 +1,8 @@
 package week5.lecture3_designing
 
 import akka.actor.{ActorRef, Actor}
-import week5.lecture3_designing.WebClient
 
-import akka.pattern.PipeableFuture
-
+import akka.pattern.pipe
 
 class Cache extends Actor {
 
@@ -17,11 +15,10 @@ class Cache extends Actor {
     case Get(url) =>
       if (cache contains url) sender ! cache(url)
       else {
-        val client = sender
-        val f = (WebClient get url).future.map(Result(client, url, _))
-        val piper = new PipeableFuture(f)
-        piper pipeTo self
+        val client = sender //need this because below map function happens in the future and might not get correct/current value
+        WebClient get url map(Result(client, url, _)) pipeTo self
       }
+
     case Result(client, url, body) =>
       cache += url -> body
       client ! body

@@ -24,4 +24,5 @@ class DBActor extends Actor with ActorLogging {
 
 object DBActor {
   case class DBException(s: String) extends Exception(s)
+  case class ServiceDownException(s: String) extends Exception(s)
 }

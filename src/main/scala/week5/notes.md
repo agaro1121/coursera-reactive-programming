@@ -91,4 +91,7 @@ LoggingReceive {...}
 
 #Testing Actors
 - can only verify externally observable effects
--
+- make actors more testable by adding `def` in them to be overridden
+- Try testing each actor in isolation
+- "Reverse Onion Testing" - go from down up. First the lower levels,
+then supervisors, and their supervisors, etc...

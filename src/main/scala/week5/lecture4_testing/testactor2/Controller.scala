@@ -1,29 +1,68 @@
 package week5.lecture4_testing.testactor2
 
-import akka.actor.{ActorSystem, Props, Actor}
-import akka.pattern.ask
-import akka.testkit.TestKit
-import akka.util.Timeout
-import org.scalatest.{WordSpecLike, BeforeAndAfterAll}
-import scala.concurrent.duration._
-/**
-  * Created by anthonygaro on 3/25/16.
-  */
-class Controller extends Actor{
 
-  val getter = context.actorOf(Props[Getter], "getter")
-  implicit val timeout = Timeout(1,SECONDS)
-  implicit val exec = context.dispatcher
+import akka.actor._
+import akka.testkit.{ImplicitSender, TestKit}
+import akka.util.Timeout
+import org.scalatest.{BeforeAndAfterAll, WordSpecLike}
+
+import scala.concurrent.duration._
+
+/**
+  * Created by Hierro on 3/5/16.
+  */
+class Controller extends Actor with ActorLogging {
+
+  import Controller._
+
+  var cache = Set.empty[String]
+  var children = Set.empty[ActorRef]
+  context.setReceiveTimeout(10 seconds)
+
+  /**
+    * Instead of setting a Timeout.
+    * You can use the scheduler here:
+    *
+    * context.system.scheduler.scheduleOnce(10 seconds) {
+    *   children foreach (_ ! Getter.Abort)
+    * }
+    *
+    * Problems: Not Thread Safe !!!
+    * The above code runs outside the context of the actor.
+    * It is run by the scheduler. This does not guarantee it will run concurrently with the actor.
+    *
+    * The code inside the block has access to the (mutable) variable `children`
+    * and it will try to modify it after the designated time. This is not synchronized!!!
+    */
+
+
 
   override def receive: Receive = {
-    case url:String =>
-      val resp = getter ? url
-      resp.map(println(_))
+    case Check(url, depth) =>
+      log.debug("{} checking {}", depth, url) //'{}' place holder. Basically a string format
+      if (!cache(url) && depth > 0)
+        children += context.actorOf(Props(new Getter(url, depth - 1)))
+      cache += url
+
+    case Getter.Done =>
+      children -= sender
+      if (children.isEmpty) context.parent ! Result(cache)
+
+    case Timeout => children foreach (_ ! Getter.Abort)
   }
+
+}
+
+object Controller {
+
+  case class Check(link: String, depth: Int)
+
+  case class Result(cache: Set[String])
+
 }
 
 class ControllerSpec extends TestKit(ActorSystem("ControllerTest"))
-with WordSpecLike with BeforeAndAfterAll
+with WordSpecLike with BeforeAndAfterAll with ImplicitSender
 {
 
 

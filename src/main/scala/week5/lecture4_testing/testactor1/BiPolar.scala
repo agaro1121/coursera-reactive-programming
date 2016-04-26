@@ -10,12 +10,14 @@ class BiPolar extends Actor {
 
   def happy: Receive = {
     case "How are you?" =>
+      println("happy")
       sender ! "happy"
       context become sad
   }
 
   def sad: Receive = {
     case "How are you?" =>
+      println("sad")
       sender ! "sad"
       context become happy
   }

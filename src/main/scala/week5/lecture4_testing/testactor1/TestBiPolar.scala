@@ -9,8 +9,8 @@ import scala.language.postfixOps
   * Created by Hierro on 3/23/16.
   */
 object TestBiPolar extends App {
-  override def main(args: Array[String]) {
-    val t = new TestKit(ActorSystem("TestSys")) with ImplicitSender {
+
+    val t = new TestKit(ActorSystem("TestSys")) with ImplicitSender { //exposes testActor
       val toggle = system.actorOf(Props[BiPolar])
       toggle ! "How are you?"
       expectMsg("happy")
@@ -21,5 +21,4 @@ object TestBiPolar extends App {
       system.terminate()
     }
 
-  }
 }

@@ -14,11 +14,11 @@ class Main extends Actor {
   val receptionist = context.actorOf(Props[Receptionist], "receptionist")
   context.watch(receptionist) //sign death pact
 
-  receptionist ! Get("http://www.google.com")
   receptionist ! Get("http://www.google.com/1")
   receptionist ! Get("http://www.google.com/2")
   receptionist ! Get("http://www.google.com/3")
   receptionist ! Get("http://www.google.com/4")
+  receptionist ! Get("http://www.google.com/5")
 
   context.setReceiveTimeout(10 seconds)
 

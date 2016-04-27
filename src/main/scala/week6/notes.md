@@ -138,3 +138,53 @@ def unhandled(message: Any): Unit = message match {
   }
 }
 ```
+
+#Persistend Actor System
+Two Ways
+- in-place updates - files, DB, etc
+- changes in append-only fashion - saving deltas
+
+##Benefits of saving current state
+- recovery of latest state in constant time
+
+##Benefits of saving changes
+- history can be replayed, audited or restored
+- Some processing errors can be corrected retroactively
+- Additional sight can be gained on business process - i.e buying history and exchanges
+- writing an append-only stream optimizes IO bandwidth
+- changes are immutable and can freely be replicated
+
+##Persistence Primitive
+```scala
+    persist(MyEvent(...)) { event => //comes back from journal if it is persisted successfully
+      //now <event> is persisted
+      doSomethingWith(event)
+    }
+```
+###Persist
+- Actor is only states that have been persisted
+###PersistAsync
+- Updates its state whether event has been persisted now or later.
+
+- use At-Least-Once for successful message delivery - responsibility of sender
+- take note that message needs to be resent
+- must also note acknowledgment so the actor can stop resending
+
+- Exactly-Once - responsibility of recipient
+- receiver has to know what it has already done to avoid redundancy
+
+##When to perform effects?
+**Performing the effect and persisting that it was done cannot be atomic**
+- Perform it before persisting for at-least-once semantics
+- Perform it after persisting for at-most-once semantics
+
+- if processing is idempotent then using at-least-once semantics achieves
+effectively exactly-once semantics
+
+##Summary
+- Actors persist facts that represent changes to their state
+- Events can be replicated and used to inform other components.
+- Recovery replays past events to reconstruct state;
+snapshots reduce this cost (so ALL events are not replayed from beginning of time)
+- snapshots do not represent the meaningful business events of the domain, they represent the internal state of a component
+this makes them less durable and less valuable than the events themselves

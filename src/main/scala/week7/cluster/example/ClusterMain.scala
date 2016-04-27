@@ -1,31 +1,61 @@
 package week7.cluster.example
 
 import akka.actor.Actor.Receive
-import akka.actor.{Actor, ActorRef, Address, Deploy, Props, SupervisorStrategy}
+import akka.actor.{Actor, ActorRef, Address, Deploy, Props, ReceiveTimeout, SupervisorStrategy, Terminated}
 import akka.cluster.ClusterEvent.{MemberRemoved, MemberUp}
 import akka.cluster.{Cluster, ClusterEvent}
 import akka.remote.RemoteScope
+import week5.lecture4_testing.testactor2.{AsyncWebClient, Controller}
+import week6.deatch.watch.receptionist.Cache.Get
+
+import scala.concurrent.duration.FiniteDuration
+import scala.util.Random
 
 /**
   * Created by anthonygaro on 4/27/16.
   */
-object ClusterMain {
-
-}
 
 /**
   * This will start a single-node cluster on port 2552 using TCP
   **/
 class ClusterMain extends Actor {
+  import ClusterReceptionistst._
+  import scala.concurrent.duration._
+
   val cluster = Cluster(context.system)
   cluster.subscribe(self, classOf[ClusterEvent.MemberUp])
+  cluster.subscribe(self, classOf[ClusterEvent.MemberRemoved])
   cluster.join(cluster.selfAddress)
+
+  val receptionist = context.actorOf(Props[ClusterReceptionist], "receptionist")
+  context.watch(receptionist) //sign death pact
+
+  def getLater(d: FiniteDuration, url: String): Unit = {
+    import context.dispatcher
+    context.system.scheduler.scheduleOnce(d, receptionist, Get(url))
+  }
+
+  getLater(Duration.Zero, "http://www.google.com")
 
   override def receive: Receive = {
     case ClusterEvent.MemberUp(member) =>
       if (member.address != cluster.selfAddress) {
-        //someone else joined
+        getLater(1 seconds, "http://www.google.com")
+        getLater(2 seconds, "http://www.google.com/0")
+        getLater(2 seconds, "http://www.google.com/1")
+        getLater(3 seconds, "http://www.google.com/2")
+        getLater(4 seconds, "http://www.google.com/3")
+        context.setReceiveTimeout(3 seconds)
       }
+
+    case ClusterReceptionistst.Result(url,set) =>
+      println(set.toVector.sorted.mkString(s"Results for '$url':\n", "\n","\n"))
+    case Failed(url,reason) =>
+      println(s"Failed to fetch '$url': $reason\n")
+    case ReceiveTimeout =>
+      cluster.leave(cluster.selfAddress)
+    case ClusterEvent.MemberRemoved(m, _) =>
+      context.stop(self)
   }
 }
 
@@ -47,6 +77,11 @@ class ClusterWorker extends Actor {
     case ClusterEvent.MemberRemoved(m, _) =>
       if (m.address == main) context.stop(self) //when main program shuts down, this also stops
   }
+
+  @scala.throws[Exception](classOf[Exception])
+  override def postStop(): Unit = {
+    AsyncWebClient.shutdown()
+  }
 }
 
 /**
@@ -55,7 +90,6 @@ class ClusterWorker extends Actor {
   * 1. Receptionist needs to know everything (MemberUp, MemberRemoved)
   * */
 class ClusterReceptionist extends Actor {
-  import Cache._
   import ClusterReceptionistst._
 
   val cluster = Cluster(context.system)
@@ -104,11 +138,16 @@ class ClusterReceptionist extends Actor {
       sender ! Failed(url,"too  many parallel queries")
 
   }
+
+  def pick(addresses: Vector[Address]): Address = {
+    Random.shuffle(addresses.toList).head
+  }
 }
 
 object ClusterReceptionistst {
 
   case class Failed(url: String, msg: String)
+  case class Result(url: String, links: Set[String])
 
 }
 
@@ -133,5 +172,17 @@ class Customer(client: ActorRef, url: String, node: Address) extends Actor {
   context.setReceiveTimeout(5 seconds)
   controller ! Controller.Check(url,2)
 
-  override def receive: Receive = ???
+  override def receive = ({
+    case ReceiveTimeout =>
+      context.unwatch(controller)
+      client ! ClusterReceptionistst.Failed(url,"controller timed out")
+
+    case Terminated(_) =>
+      client ! ClusterReceptionistst.Failed(url,"controller died")
+
+    case Controller.Result(links) =>
+      context.unwatch(controller)
+      client ! ClusterReceptionistst.Result(url,links)
+  }: Receive) //need to explicitly put the type here
+    .andThen (_ => context.stop(self))
 }

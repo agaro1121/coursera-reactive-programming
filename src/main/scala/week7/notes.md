@@ -64,7 +64,24 @@ config:
     }
 
     -Dakka.actor.provider=akka.cluster.ClusterActorRefProvider
+    -Dakka.cluster.min-nr-of-members=2
+    -Dakka.cluster.auto-down=on
 ```
 
 ![Remote Actor Setup](/screenshot/remoteActor.png)
 
+1. Fire up ClusterMain ActorSystem
+2. Create Receptionist
+3. Request comes in and customer gets created
+ - -- Remote Next --
+ - Customer Deploys Controller into ClusterWorker Remote ActorSystem
+ - ClusterWorker has remote guardian
+ - When Customer deploys Controller it:
+4. Customer sends message to remote guardian to create controller(red dotted line)
+5. Remote guardian creates folder to house actors deployed from other systems (`akk.tcp://...` from above)
+6. Creates marker for the requested actor (user/app/receptionist/controller) - `user/app/..` from above
+7. Creates Controller actor
+ - `akk.tcp://...` and `user/app/..` are not actors. They are names inserted to find controller for remote communication
+ - logically, controller is child of customer actor
+ - controller.context.parent -> customer
+8. controller will spawn getters as needed

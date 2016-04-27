@@ -13,11 +13,12 @@ class Resolver extends Actor{
     case Resolve(path) =>
       context.actorSelection(path) ! Identify((path,sender))
 
+    /* Incomplete Code from slides
     case ActorIdentity((path,client), Some(ref)) =>
       client ! Resolved(path,ref)
 
     case ActorIdentity((path,client), None) =>
-      client ! NotResolved(path)
+      client ! NotResolved(path)*/
   }
 }
 

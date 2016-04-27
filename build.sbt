@@ -7,7 +7,8 @@ scalaVersion := "2.11.7"
 
 libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.4.2"
 libraryDependencies += "com.typesafe.akka" %% "akka-testkit" % "2.4.2"
-libraryDependencies += "com.ning" % "async-http-client" % "1.7.19"
+libraryDependencies += "com.ning" % "async-http-client" % "1.7.19" force()
+libraryDependencies += "io.netty" % "netty" % "3.6.6.Final" force()
 libraryDependencies += "org.jsoup" % "jsoup" % "1.8.1"
 
 libraryDependencies += "org.scalatest" %% "scalatest" % "2.2.6"
@@ -19,3 +20,6 @@ libraryDependencies += "com.typesafe.akka" %% "akka-persistence" % "2.4.2"
 libraryDependencies += "com.typesafe.akka" %% "akka-persistence-tck" % "2.4.2"
 
 libraryDependencies += "com.typesafe.akka" %% "akka-cluster" % "2.4.2"
+libraryDependencies += "com.typesafe.akka" %% "akka-cluster-metrics" % "2.4.2"
+libraryDependencies += "com.typesafe.akka" %% "akka-cluster-sharding" % "2.4.2"
+libraryDependencies += "com.typesafe.akka" %% "akka-cluster-tools" % "2.4.2"

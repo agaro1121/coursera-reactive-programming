@@ -72,7 +72,7 @@ class UserProcessorSimplified(publisher: ActorPath) extends PersistentActor with
   override def receiveCommand: Receive = {
     case NewPost(text,id) =>
       persist(PostCreated(text)) { e =>
-        deliver(publisher, PublishPost(text, _)) //2nd arg is correlation id //actor remember it needs to PublishPost because it sees the PostCreated Message above
+//        deliver(publisher, PublishPost(text, _)) //2nd arg is correlation id //actor remember it needs to PublishPost because it sees the PostCreated Message above
         sender ! BlogPosted(id)
       }
 
@@ -80,10 +80,11 @@ class UserProcessorSimplified(publisher: ActorPath) extends PersistentActor with
   }
 
   override def receiveRecover: Receive = {
-    case PostCreated(text) => deliver(publisher, PublishPost(text,_)) //important to note delivery must be redone after crash
+//    case PostCreated(text) => deliver(publisher, PublishPost(text,_)) //important to note delivery must be redone after crash
     case PostPublished(id) => confirmDelivery(id) //confirms to at-least-once delivery that this id has been confirmed - as above
   }
 
+  override def persistenceId: String = ???
 }
 
 //Example of Exactly-Once Delivery

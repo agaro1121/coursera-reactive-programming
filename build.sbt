@@ -18,3 +18,4 @@ libraryDependencies += "io.reactivex" %% "rxscala" % "0.24.0"
 libraryDependencies += "com.typesafe.akka" %% "akka-persistence" % "2.4.2"
 libraryDependencies += "com.typesafe.akka" %% "akka-persistence-tck" % "2.4.2"
 
+libraryDependencies += "com.typesafe.akka" %% "akka-cluster" % "2.4.2"

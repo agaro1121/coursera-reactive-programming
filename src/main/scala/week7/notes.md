@@ -66,5 +66,5 @@ config:
     -Dakka.actor.provider=akka.cluster.ClusterActorRefProvider
 ```
 
-![Remote Actor Setup](screenshot/remoteActor.png)
+![Remote Actor Setup](/screenshot/remoteActor.png)
 

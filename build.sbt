@@ -23,3 +23,6 @@ libraryDependencies += "com.typesafe.akka" %% "akka-cluster" % "2.4.2"
 libraryDependencies += "com.typesafe.akka" %% "akka-cluster-metrics" % "2.4.2"
 libraryDependencies += "com.typesafe.akka" %% "akka-cluster-sharding" % "2.4.2"
 libraryDependencies += "com.typesafe.akka" %% "akka-cluster-tools" % "2.4.2"
+
+libraryDependencies += "org.slf4j" % "slf4j-api" % "1.7.1"
+libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.0.3"

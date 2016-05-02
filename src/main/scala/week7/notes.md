@@ -85,3 +85,53 @@ config:
  - logically, controller is child of customer actor
  - controller.context.parent -> customer
 8. controller will spawn getters as needed
+
+#Cluster Needs Failure Detection
+- consensus unattainable if members are unreachable
+- every node is monitored by several others through heartbeats
+![Who Watches Who](/screenshot/clusterNeighbors.png)
+- lack of heartbeat is sent via gossip protocol
+`-Dakka.cluster.auto-down=on` - When node is unreachable, auto-down
+![Cluster States](/screenshot/nodeTransitions.png)
+
+##Cluster and Deathwatch
+- allows clean-up remote-deployed child actors
+- decision must be taken consistently within the cluster
+- once Terminated is delivered, the actor cannot come back
+
+##Lifecycle Monitoring is important for distributed fail-over
+- delivery of Terminated is guaranteed
+- Terminated message can be synthesized by system even if actor is dead
+
+#Eventual Consistency
+1. Strong Consistency
+ - All reads return updated values - Synchronization blocks
+2. Weak Consistency
+ - conditions need to be met before reads return updated values - @volatile
+3. Eventual Consistency
+ - once no more updates are made to an object, there is a time after which all
+ reads return the last written value
+
+- an actor forms an island of consistency - everything within an actor is sequentially
+consistent
+- collaborating actors can at most be eventually consistent - they're always exchanging messages
+and that can take time so state is always in flux
+- actors not automatically eventually consistent
+example: sample implementation had flaws:
+1. If merge happened within same millisecond, then merge is not resolved
+2. message delivery not guaranteed and there was no resend mechanism
+- eventual consistency requires eventual dissemination of all updates - all msgs need to be eventually delivered
+this implies a resend mechanism is required. In clustering, messages are resent
+pessimistically not out of preparation
+- Need to employ suitable data structures ie. CRDTs (Convergent & Commutative (conflict-free) replicated data types)
+- some data structures are suitable for collaboration
+- an example of this is the cluster states:
+1. directed acyclic graph of states - cycles never form on graph. State never goes back to beginning or back to themselves
+![Acyclic Nodes](/screenshot/acyclicNodes.png)
+2. conflicts can always be resolved locally
+- Orders of magnitude can be given to states i.e you can go from leaving to down but not down to leaving so
+leaving to down is more important
+3. conflict resolution is commutative
+- does not matter if you learn green or red first.
+- Eventually the merge conflict is down(red)
+![Commutative Property](/screenshot/commutativeProperty.png)

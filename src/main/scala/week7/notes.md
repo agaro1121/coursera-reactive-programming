@@ -135,3 +135,257 @@ leaving to down is more important
 - does not matter if you learn green or red first.
 - Eventually the merge conflict is down(red)
 ![Commutative Property](/screenshot/commutativeProperty.png)
+
+#Actor Composition
+- Interface of actor is defined by its accepted message types
+- type of an actor is structural not nominal
+- structure may change over time i.e become()
+- actors cannot be composed like functions - they behave more like organizations
+- actors are composed on a protocol level
+
+##Customer Pattern
+- request/reply
+- customer address included in (original) request
+- allows dynamic composition of actor systems - for example:
+1. alice sends message to bob
+2. bob decides who to forward it to
+3. it gets processed by the appropriate party and gets sent back directly to Alice
+ - This shows bob can dynamically pick where it goes and it still gets back to Alice because the original sender address is attached
+
+##Interceptors
+```scala
+class AuditTrail(target: ActorRef) extends Actor with ActorLogging {
+  def receive = {
+    case msg =>
+      log.info("sent {} to {}", msg, target)
+      target forward msg
+  }
+}
+```
+
+##The Ask Pattern
+- You expect exactly one reply
+- notice the import statement
+
+**Example 1:**
+```scala
+import akka.pattern.ask
+    class PostsByEmail(userService: ActorRef) extends Actor {
+      implicit val timeout = Timeout(3 seconds)
+      def receive = {
+        case Get(email) =>
+          (userSeevice ? findByEmail(email)).mapTo[UserInfo]
+            .map(info => Result(info.posts.filter(_.email == email)))
+              .recover{ case ex => Failure(ex) }
+                .pipeTo(sender)
+      }
+    }
+```
+
+**Example 2:** Aggregating results from multiple responses
+```scala
+class PostSummary(...) extends Actor {
+    implicit val timeout = Timeout(500.millis)
+    def receive = {
+      case Get(postId, user, password) =>
+      val response = for {
+        status <- (publisher ? GetStatus(postId)).mapTo[PostStatus]
+        text   <- (postStore ? Get(postId)).mapTo[Post]
+        auth   <- (authService ? Login(user, password)).mapTo[AuthStatus]
+      } yield {
+        if(auth.successful) Result(status, text)
+        else Failure("not authorized")
+      }
+      response pipeTo sender
+    }
+}
+```
+
+##Risk Delegation
+- Create worker actor to perform dangerous task
+- apply lifecycle monitor/supervision
+- report success/failure back to requester
+- worker actor(temporary actor here) shuts down after each task
+**Example:**
+```scala
+    class FileWriter extends ACtor {
+      var workerToCustomer = Map.empty[ActorRef,ActorRef]
+      override val supervisorStrategy = SupervisorStrategy.stoppingStrategy
+
+      def receive = {
+        case Write(content, file) =>
+        val worker = context.actorOf(Props(new FileWorker(contents, file, self)))
+          context.watch(worker)
+          workerToCustomer += worker -> sender
+
+          case Done         =>        workerToCustomer.get(sender).foreach(_ ! Done) //sender here is worker actor
+                                      workerToCustomer -= sender //sender here is worker actor
+          case Terminated(worker) =>  workerToCustomer.get(worker).foreach(_ ! Failed)
+                                      workerToCustomer -= worker
+      }
+    }
+```
+
+##Facade - other examples...
+- translation
+- validation
+- rate limitation
+- access control
+
+#Scalability
+- Don't compromise service quality if the # of your clients goes up
+##Replication of Actors
+- stateless replicas can run concurrently
+- Routing messages to worker pools:
+- stateful(round robin, smallest queue, adaptive, ...)
+- stateless (random, consistent hasing, ...)
+
+##Stateful
+###Round-Robin Routing
+- equal distribution of messages to routees - messages go to worker actors in the same order
+for example: 3 worker actors, messages always hit actors 1 2 3 in that order rinse and repeat
+- hiccups or unequal message processing times introduce imbalance
+if one worker has an issue and its messages overflow...too bad
+- imbalances lead to larger spread in latency spectrum
+
+###Smallest Mailbox Routing - send work to the one with smallest mailbox
+- requires routees to be local to inspect message queue
+- evens out imbalances, less persistent latency spread
+- high routing cost, only worth it for high processing cost - mailbox data structures are expensive to traverse
+
+###Shared Work Queue - takes smallest mailbox routing to the extreme
+- requires routees to be local
+- most homogeneous latency
+- effectively a pull model - routees pull oldest message in the queue
+- theres a Balancing Dispatcher for this
+
+###Adaptive Routing
+- requires feedback about processing times, latencies, queue sizes, etc
+workers periodically send this information to the router for analyzing distribution
+- steering the routing weights subject to feedback control theory
+    side effects of doing this wrong:
+        - oscillations
+        - over-dampening
+
+##Stateless
+###Random Routing - effectively don't need a router. Sender randomizes destination
+- asymptotically equal distribution of messages to routees
+- no shared state necessary - low routing overhead
+- works with several distributed routers to the same routees
+- can stochastically lead to imbalances - random windows of workers getting more work
+
+###Consistent Hashing - effectively don't need a router
+- splitting incoming message stream according to some criterion
+- bundle substreams and send them to the same reoutees consistently
+- can exhibit systematic imbalances based on hashing function
+- different latencies for parts of the input stream
+- no shared state necessary between different routers to the same targets
+
+####Replication of Stateful Actors
+- can be used to replicate stateful actors if substreams correspond to independent parts of the state
+- multiple writers to the same state require approprite data structures and are eventually consistent
+think eventual consistency and distributed store - 2 actors sharing same `field`
+- can be used for fault tolerance more than scalability
+
+####Replication of Persistent Stateful Actors
+- based on persisted state
+- only one instance active at all times
+- consistent routing to the active instance
+- possibly buffering messages during recovery
+- migration means recovery at a different location
+- in the case of event streams, events can be written to both workers and when one goes down,
+recovery is faster because state is in both places
+
+#Scalability Summary
+- Asynchronous message passing enables vertical scalability - multiple machines
+- Location transparency enables horizontal scalability - multiple cores
+
+#Responsiveness
+- implies resilience to overload scenarios
+
+##Exploit Parallelism
+```scala
+class PostSummary(...) extends Actor {
+    implicit val timeout = Timeout(500.millis)
+    def receive = {
+      case Get(postId, user, password) => //below have futures running in parallel
+        val status = (publisher ? GetStatus(postId)).mapTo[PostStatus]
+        val text   = (postStore ? Get(postId)).mapTo[Post]
+        val auth   = (authService ? Login(user, password)).mapTo[AuthStatus]
+
+      val response = for {
+        s <- status
+        t <- text
+        a <- auth
+      } yield {
+        if(a.successful) Result(s, t)
+        else Failure("not authorized")
+      }
+      response pipeTo sender
+    }
+}
+```
+##Load vs Responsiveness
+- look at independent parts and see what's happening
+- more requests = more latency
+- avoid dependency of processing cost on load
+- add parallelism elastically (resizing routers) - add it where it's needed
+
+- when the rate exceeds the system's capacity, requests will pile up
+- processing gets backlogged
+- Clients timeout, leading to unnecessary work being performed
+
+##Circuit Breaker
+```scala
+class Retriever(userService: ActorRef) extends Actor {
+  implicit val timeout = Timeout(2 seconds)
+  val cb = CircuitBreaker(context.system.scheduler,
+    maxFailures = 3,
+    callTimeout = 1 second, //different from timeout above. That's ok because this creates a minimum.
+    //If 3 calls IN A ROW take longer than a second, then open up the circuit breaker
+    resetTimeout = 30 seconds)
+
+    def receive = {
+      case Get(user) =>
+        val result = cb.withCircuitBreaker(userService ? user).mapTo[String] //circuit breaker monitors this ask
+        //if 3 calls take longer than 1 second then subsequent calls fail immediately without contacting user service
+        //once this happens the cb will allow 1 request per 30 seconds and monitors it. If all goes well cb closes.
+        //If it doesn't go well, then it will open again for another 30 seconds
+          ...
+    }
+}
+```
+- good for segregating 2 components so failures of 1 don't affect another
+- not good for separating actors - does not completely isolate actors if they run on the same dispatcher
+
+##Bulkheading
+- Separate computing intensive parts from client-facing parts
+- Actor isolation is not enough: execution mechanism is still shared
+- Dedicate disjoint resources to different parts of the system
+Can be achieved by:
+- Configuring differnt actors to run on different nodes
+- on the same same host but run with different dispatchers `Props[MyActor].withDispatcher["compute-jobs"]`
+```
+akka.actor.default-dispatcher {
+  executor = "fork-join-executor"
+  fork-join-executor {
+    paralleslism-min = 8      #min threads
+    paralleslism-max = 64     #max threads
+    paralleslism-factor = 3.0 #times number of CPU cores available
+  }
+}
+
+compute-jobs.fork-join-executor { //new dispatcher
+    paralleslism-min = 4 #
+    paralleslism-max = 4 # Exactly 4 threads
+}
+```
+
+##Failure vs Responsiveness
+- detecting failure takes time, usually a timeout
+- immediate fail-over requires a backup to be readily available - might be latency in backup taking over
+- instant failover is possible in active-active configurations - See Below
+![active-active-configuration](/screenshot/active-active-configuration.png)
+Example:
+- Get back 2 responses and compare, if they're the same, send results to client
+- if 1 node doesn't respond in time, request to have it replaced
